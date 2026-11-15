@@ -1,0 +1,189 @@
+@import 'tailwindcss';
+
+/* Paleta sacada de una tienda de música de barrio: pared pintada de verde,
+   mástiles de palorosa, etiquetas de cartulina, herrajes de latón y el rojo
+   de un sunburst. Aquí viven los tokens; en el resto del código solo hay utilidades. */
+@theme {
+  --color-*: initial;
+  --color-pared: #1f3d33;
+  --color-pared-hondo: #172f27;
+  --color-palorosa: #2b1810;
+  --color-palorosa-claro: #3b2217;
+  --color-hueso: #f3ebd3;
+  --color-tweed: #e2ce9c;
+  --color-tinta-suave: #6b5128;
+  --color-laton: #c99a3a;
+  --color-laton-claro: #e0b65a;
+  --color-cromo: #b9c0bc;
+  --color-sunburst-rojo: #a3301f;
+  --color-sunburst-ambar: #e5a042;
+  --color-papel: #f8f1dc;
+  --color-papel-claro: #fffdf6;
+  --color-marron: #4a2a1b;
+  --color-rojo-hondo: #8a2718;
+  --color-entregado: #2f6b58;
+  --color-placeholder: #8a7448;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-transparent: transparent;
+
+  --font-display: 'Caprasimo', Georgia, 'Times New Roman', serif;
+  --font-body: 'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-*: initial;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: clamp(1.5rem, 2.2vw, 1.875rem);
+  --text-2xl: clamp(2rem, 3.6vw, 3rem);
+  --text-hero: clamp(2.5rem, 5vw, 4.25rem);
+
+  --container-sitio: 75rem;
+  --spacing-gutter: clamp(1rem, 4vw, 2rem);
+  --spacing-section: clamp(3.5rem, 8vw, 6.5rem);
+
+  --breakpoint-sm: 36rem;
+  --breakpoint-md: 44rem;
+  --breakpoint-lg: 56rem;
+  --breakpoint-xl: 64rem;
+  --breakpoint-2xl: 80rem;
+
+  --shadow-papel: 0 24px 40px -14px rgba(0, 0, 0, 0.55);
+
+  --animate-swing: swing 1s ease-in-out;
+
+  /* Las etiquetas cuelgan de su gancho y se mecen al pasar el cursor */
+  @keyframes swing {
+    0% {
+      transform: rotate(0deg);
+    }
+    20% {
+      transform: rotate(3.5deg);
+    }
+    45% {
+      transform: rotate(-2.5deg);
+    }
+    70% {
+      transform: rotate(1.2deg);
+    }
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+}
+
+/* Rasgueo de las cuerdas: Tailwind no genera keyframes sueltos, por eso viven aquí */
+@keyframes pluck {
+  0% {
+    transform: translateY(0);
+  }
+  12% {
+    transform: translateY(-7px);
+  }
+  26% {
+    transform: translateY(5px);
+  }
+  40% {
+    transform: translateY(-3.5px);
+  }
+  54% {
+    transform: translateY(2.5px);
+  }
+  68% {
+    transform: translateY(-1.2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pluck-again {
+  0% {
+    transform: translateY(0);
+  }
+  12% {
+    transform: translateY(-7px);
+  }
+  26% {
+    transform: translateY(5px);
+  }
+  40% {
+    transform: translateY(-3.5px);
+  }
+  54% {
+    transform: translateY(2.5px);
+  }
+  68% {
+    transform: translateY(-1.2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    color: var(--color-hueso);
+    background: var(--color-pared-hondo);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Caprasimo solo existe en peso 400: evitamos negritas sintéticas */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 400;
+  }
+
+  ul,
+  ol {
+    list-style: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-laton-claro);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
