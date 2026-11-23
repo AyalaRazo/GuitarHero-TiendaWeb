@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, MouseEvent } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { NAV_LINKS } from '../data/catalog';
@@ -16,7 +16,7 @@ export function Header() {
   const [params] = useSearchParams();
   const urlQuery = params.get('q') ?? '';
   const [query, setQuery] = useState(urlQuery);
-  const { user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   // Estado dinámico para contar las unidades reales del carrito desde el localStorage
   const [units, setUnits] = useState(() => {
@@ -50,7 +50,6 @@ export function Header() {
     };
 
     window.addEventListener('storage', updateCartCount);
-    // Un evento personalizado opcional para refrescar en la misma pestaña
     window.addEventListener('focus', updateCartCount);
 
     return () => {
@@ -59,17 +58,25 @@ export function Header() {
     };
   }, []);
 
-  // Si cambia la búsqueda de la dirección (por ejemplo al quitarla), el campo la sigue
   useEffect(() => {
     setQuery(urlQuery);
   }, [urlQuery]);
 
-  // Buscar siempre lleva a todo el catálogo con la búsqueda aplicada
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = query.trim();
     navigate(trimmed ? `/productos?q=${encodeURIComponent(trimmed)}` : '/productos');
   };
+
+  const handleLogout = (e: MouseEvent) => {
+    e.preventDefault();
+    logout();
+    navigate('/');
+  };
+
+  const userName = typeof user === 'string'
+    ? user.split('@')[0]
+    : (user as any)?.firstName || (user as any)?.email?.split('@')[0] || 'Mi cuenta';
 
   return (
     <>
@@ -98,7 +105,7 @@ export function Header() {
 
           <form
             className="flex w-full max-w-[34rem] justify-self-center max-[52rem]:order-last max-[52rem]:col-span-full max-[52rem]:max-w-none"
-            role="search" 
+            role="search"
             onSubmit={handleSearch}
           >
             <label className="sr-only" htmlFor="buscar">
@@ -122,10 +129,30 @@ export function Header() {
           </form>
 
           <div className="flex gap-6 max-[52rem]:gap-4">
-            <Link className={ICON_LINK} to="/cuenta">
-              <UserIcon className="size-6" />
-              <span className={ICON_LABEL}>{user ? user.firstName : 'Mi cuenta'}</span>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link className={ICON_LINK} to="/cuenta">
+                  <UserIcon className="size-6" />
+                  <span className={ICON_LABEL}>{userName}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className={`${ICON_LINK} text-red-400 hover:text-red-300`}
+                >
+                  <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span className={ICON_LABEL}>Salir</span>
+                </button>
+              </>
+            ) : (
+              <Link className={ICON_LINK} to="/login">
+                <UserIcon className="size-6" />
+                <span className={ICON_LABEL}>Ingresar</span>
+              </Link>
+            )}
+
             <Link className={ICON_LINK} to="/carrito">
               <CartIcon className="size-6" />
               <span className={ICON_LABEL}>Carrito</span>

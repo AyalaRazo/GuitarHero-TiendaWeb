@@ -1,5 +1,6 @@
 import { Outlet, Route, Routes } from 'react-router-dom';
-import { RequireAuth } from './components/RequireAuth';
+import { AuthProvider } from './auth/AuthContext';
+import RequireAuth from './components/RequireAuth';
 import { ScrollToTop } from './components/ScrollToTop';
 import { CheckoutLayout } from './layouts/CheckoutLayout';
 import { MainLayout } from './layouts/MainLayout';
@@ -14,14 +15,14 @@ import { Profile } from './pages/account/Profile';
 import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
 import { Home } from './pages/Home';
-import { Login } from './pages/Login';
+import Login from './pages/Login';
 import { NotFound } from './pages/NotFound';
 import { OrderConfirmed } from './pages/OrderConfirmed';
 import { Products } from './pages/Products';
 
 export function App() {
   return (
-    <>
+    <AuthProvider>
       <ScrollToTop />
       <Routes>
         <Route element={<MainLayout />}>
@@ -30,6 +31,7 @@ export function App() {
           <Route path="productos/:categoria" element={<Products />} />
           <Route path="carrito" element={<Cart />} />
           <Route path="pedido-confirmado" element={<OrderConfirmed />} />
+          <Route path="login" element={<Login />} />
           <Route path="cuenta/ingresar" element={<Login />} />
           <Route
             path="cuenta"
@@ -44,19 +46,20 @@ export function App() {
             <Route path="direcciones" element={<Addresses />} />
             <Route path="favoritos" element={<Favorites />} />
             <Route path="datos" element={<Profile />} />
-            <Route
-              path="admin"
-              element={
-                <RequireAuth role="admin">
-                  <Outlet />
-                </RequireAuth>
-              }
-            >
+            <Route path="admin" element={<Outlet />}>
               <Route index element={<AdminProducts />} />
               <Route path="productos/nuevo" element={<AdminProductForm />} />
               <Route path="productos/:id" element={<AdminProductForm />} />
             </Route>
           </Route>
+          <Route
+            path="admin/products"
+            element={
+              <RequireAuth>
+                <AdminProducts />
+              </RequireAuth>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route element={<CheckoutLayout />}>
@@ -70,6 +73,6 @@ export function App() {
           />
         </Route>
       </Routes>
-    </>
+    </AuthProvider>
   );
 }
