@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProductArt } from '../../components/ProductArt';
 import { formatPrice } from '../../data/catalog';
-<<<<<<< HEAD
 import { ADDRESSES, ORDERS } from '../../data/sample';
-=======
-import { ADDRESSES, ORDERS, orderLines, orderTotal } from '../../data/sample';
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
 import type { Order } from '../../data/sample';
 import { btn, chipClaro, paperMuted, paperPad, paperTitle, status, tituloSeccion } from '../../ui';
 import { OrderTracker, statusTone } from './OrderTracker';
@@ -29,7 +25,6 @@ const matches = (order: Order, filter: Filter): boolean => {
 
 export function Orders() {
   const [filter, setFilter] = useState<Filter>('todos');
-<<<<<<< HEAD
   const address = ADDRESSES.find((a) => a.primary) ?? ADDRESSES[0];
 
   // Obtenemos los pedidos combinando los de ejemplo y el último pedido realizado por cualquier cuenta
@@ -41,34 +36,28 @@ export function Orders() {
         const parsedOrder = JSON.parse(latest);
         // Evitamos duplicados si el ID ya existe en la lista
         if (!list.some((o) => o.id === parsedOrder.id)) {
-          // Adaptamos la estructura al formato que espera la vista
           const customOrder: Order = {
             id: parsedOrder.id,
             date: parsedOrder.date,
             status: parsedOrder.status || 'Recibido',
             items: parsedOrder.items.map((i: any) => ({
-              productId: i.product.id || 'p-custom',
+              productId: i.product?.id || i.productId || 'p-custom',
               qty: i.qty,
+              ...(i.product ? { product: i.product } : {}),
             })),
-            shipping: 0,
+            shipping: parsedOrder.shipping ?? 0,
           };
-          // Agregamos el pedido nuevo al inicio de la lista
           list.unshift(customOrder);
         }
       }
     } catch (e) {
-      console.error("Error leyendo pedido del almacenamiento", e);
+      console.error('Error leyendo pedido del almacenamiento', e);
     }
     return list;
   })();
 
   const visible = allOrders.filter((order) => matches(order, filter));
 
-=======
-  const visible = ORDERS.filter((order) => matches(order, filter));
-  const address = ADDRESSES.find((a) => a.primary) ?? ADDRESSES[0];
-
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
   return (
     <>
       <h1 className={tituloSeccion}>Mis pedidos</h1>
@@ -98,11 +87,8 @@ export function Orders() {
       ) : (
         <ul className="mt-6 grid gap-6">
           {visible.map((order) => {
-<<<<<<< HEAD
-            // Manejador seguro para extraer las líneas de productos
             const lines = order.items.map((item: any) => {
               if (item.product) return item;
-              // Si viene desde el localStorage guardado por el checkout
               return {
                 product: {
                   id: item.productId || Math.random(),
@@ -115,11 +101,10 @@ export function Orders() {
               };
             });
 
-            const computedTotal = lines.reduce((sum: number, i: any) => sum + (i.product.price * i.qty), 0) + (order.shipping || 0);
+            const computedTotal =
+              lines.reduce((sum: number, i: any) => sum + i.product.price * i.qty, 0) +
+              (order.shipping || 0);
 
-=======
-            const lines = orderLines(order);
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
             return (
               <li className={paperPad} key={order.id}>
                 <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
@@ -132,23 +117,18 @@ export function Orders() {
 
                 <div className="mt-[1.1rem] flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
                   <ul className="flex gap-2">
-<<<<<<< HEAD
                     {lines.map(({ product }: any, idx: number) => (
                       <li key={product.id || idx}>
-=======
-                    {lines.map(({ product }) => (
-                      <li key={product.id}>
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
-                        <ProductArt kind={product.art} tone={product.tone} className="grid size-15 place-items-center rounded-[3px] bg-tweed p-[0.35rem] [&_svg]:size-full" />
+                        <ProductArt
+                          kind={product.art}
+                          tone={product.tone}
+                          className="grid size-15 place-items-center rounded-[3px] bg-tweed p-[0.35rem] [&_svg]:size-full"
+                        />
                         <span className="sr-only">{product.name}</span>
                       </li>
                     ))}
                   </ul>
-<<<<<<< HEAD
                   <p className="font-display text-[1.6rem] leading-none">{formatPrice(computedTotal)}</p>
-=======
-                  <p className="font-display text-[1.6rem] leading-none">{formatPrice(orderTotal(order))}</p>
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
                 </div>
 
                 <OrderTracker status={order.status} />
@@ -156,15 +136,12 @@ export function Orders() {
 
                 <div className="mt-6 flex flex-wrap items-start justify-between gap-4 border-t border-dashed border-palorosa/35 pt-[1.1rem]">
                   <details className="min-w-56 flex-1">
-                    <summary className="w-fit cursor-pointer font-semibold underline decoration-laton decoration-2 underline-offset-[0.25em]">Ver detalle</summary>
+                    <summary className="w-fit cursor-pointer font-semibold underline decoration-laton decoration-2 underline-offset-[0.25em]">
+                      Ver detalle
+                    </summary>
                     <ul className="mt-[0.9rem] grid gap-2">
-<<<<<<< HEAD
                       {lines.map(({ product, qty }: any, idx: number) => (
                         <li className="flex justify-between gap-4" key={product.id || idx}>
-=======
-                      {lines.map(({ product, qty }) => (
-                        <li className="flex justify-between gap-4" key={product.id}>
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
                           <span>
                             {product.name} <span className={paperMuted}>x {qty}</span>
                           </span>
@@ -191,8 +168,4 @@ export function Orders() {
       )}
     </>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> f48c1433d2b91e52e157c3d031d195b318b227b1
