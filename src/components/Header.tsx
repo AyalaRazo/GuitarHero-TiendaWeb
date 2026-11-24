@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { SearchIcon, UserIcon, CartIcon } from './Icons'; 
+import { cartUnits, useCartLines } from '../store/cart';
+import { CartIcon, UserIcon } from './Icons';
+import { SearchBox } from './SearchBox';
 
 const ICON_LINK = "flex flex-col items-center gap-1 text-gray-400 hover:text-[#f1e6d0] transition";
 const ICON_LABEL = "text-xs font-medium mt-1";
@@ -8,6 +10,7 @@ const ICON_LABEL = "text-xs font-medium mt-1";
 export function Header() {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const units = cartUnits(useCartLines());
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -19,28 +22,21 @@ export function Header() {
 
   return (
     <header className="border-b border-white/5 bg-[#0a0f0d]/90 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-x-6 gap-y-3 max-[52rem]:flex-wrap">
         
         <Link to="/" className="text-3xl font-black text-[#f1e6d0] tracking-tighter">
           GUITAR<span className="opacity-70">HERO</span>
         </Link>
 
-        <form className="flex-1 max-w-2xl flex items-center border border-white/10 rounded-lg overflow-hidden bg-black/30 transition-colors focus-within:border-white/30">
-          <input 
-            type="text" 
-            placeholder="Buscar guitarras, accesorios..."
-            className="w-full px-4 py-2.5 bg-transparent outline-none text-sm text-[#f1e6d0] placeholder-gray-500"
-          />
-          <button type="submit" className="px-4 text-gray-400 hover:text-[#f1e6d0]">
-            <SearchIcon className="size-[1.3rem]" />
-          </button>
-        </form>
+        <div className="flex-1 max-w-2xl max-[52rem]:order-last max-[52rem]:max-w-none max-[52rem]:basis-full">
+          <SearchBox />
+        </div>
 
         <div className="flex gap-6 max-[52rem]:gap-4">
           
           {isAuthenticated ? (
             <>
-              <Link className={ICON_LINK} to="/admin/products">
+              <Link className={ICON_LINK} to="/cuenta">
                 <UserIcon className="size-6 text-[#f1e6d0]" />
                 <span className={ICON_LABEL + " text-[#f1e6d0]"}>{userName}</span>
               </Link>
@@ -62,6 +58,10 @@ export function Header() {
           <Link className={ICON_LINK} to="/cart">
             <CartIcon className="size-6" />
             <span className={ICON_LABEL}>Carrito</span>
+            <span className="grid h-[1.4rem] min-w-[1.4rem] place-items-center rounded-full bg-sunburst-rojo px-[0.3rem] text-xs leading-none font-bold text-hueso">
+              {units}
+              <span className="sr-only"> artículos</span>
+            </span>
           </Link>
           
         </div>
