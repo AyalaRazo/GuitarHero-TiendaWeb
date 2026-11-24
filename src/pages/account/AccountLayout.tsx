@@ -18,7 +18,7 @@ const LINKS = [
 ];
 
 export function AccountLayout() {
-  const { user, signOut } = useAuth();
+  const { account: user, logout: signOut } = useAuth();
   const navigate = useNavigate();
 
   if (!user) return null;

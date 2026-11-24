@@ -1,4 +1,4 @@
-// Datos de muestra solo para el diseño. La fuente real de datos se conectará después.
+// Catálogo inicial. La tienda lo copia a localStorage la primera vez y desde ahí se administra (store/products.ts).
 
 export type ArtKind = 'electric' | 'bass' | 'acoustic' | 'amp' | 'keys' | 'pedal' | 'strings' | 'drum';
 export type ArtTone = 'sunburst' | 'negro' | 'blanco' | 'verde' | 'natural';
@@ -50,9 +50,11 @@ export interface Product {
   tone: ArtTone;
   badge?: string;
   featured?: boolean;
+  /* Foto subida desde el panel administrativo (data URL). Si falta, se usa la ilustración. */
+  image?: string;
 }
 
-export const PRODUCTS: Product[] = [
+export const SEED_PRODUCTS: Product[] = [
   // Guitarras
   { id: 'sunburst-60', name: 'Guitarra eléctrica Sunburst 60', detail: 'Mástil de maple y tres micrófonos sencillos', price: 12490, category: 'guitarras', art: 'electric', tone: 'sunburst', badge: 'Nueva', featured: true },
   { id: 'cedro-clasica', name: 'Guitarra acústica Cedro', detail: 'Tapa de cedro macizo y cuerdas de nailon', price: 5890, category: 'guitarras', art: 'acoustic', tone: 'natural', featured: true },
@@ -91,14 +93,10 @@ export const PRODUCTS: Product[] = [
   { id: 'cuerdas-bajo', name: 'Cuerdas para bajo .045 (juego)', detail: 'Acero inoxidable, 4 cuerdas', price: 540, category: 'accesorios', art: 'strings', tone: 'verde' },
 ];
 
-export const productById = (id: string): Product | undefined => PRODUCTS.find((p) => p.id === id);
-
 export const categoryById = (id: string | undefined): Category | undefined => CATEGORIES.find((c) => c.id === id);
 
-export const countByCategory = (id: CategoryId): number => PRODUCTS.filter((p) => p.category === id).length;
-
 // Quita acentos y mayúsculas para que "bateria" encuentre "Batería"
-const normalize = (text: string): string =>
+export const normalize = (text: string): string =>
   text
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -120,3 +118,33 @@ const priceFormat = new Intl.NumberFormat('es-MX', {
 });
 
 export const formatPrice = (value: number): string => priceFormat.format(value);
+
+/* Etiquetas legibles para tipos de ilustración y acabados */
+export const ART_LABEL: Record<ArtKind, string> = {
+  electric: 'Eléctrica',
+  acoustic: 'Acústica',
+  bass: 'Bajo',
+  amp: 'Amplificador',
+  keys: 'Teclado',
+  drum: 'Batería',
+  pedal: 'Pedal',
+  strings: 'Cuerdas',
+};
+
+export const TONE_LABEL: Record<ArtTone, string> = {
+  sunburst: 'Sunburst',
+  negro: 'Negro',
+  blanco: 'Blanco',
+  verde: 'Verde',
+  natural: 'Natural',
+};
+
+/* Tipos de instrumento que puede tener cada categoría */
+export const ART_BY_CATEGORY: Record<CategoryId, ArtKind[]> = {
+  guitarras: ['electric', 'acoustic'],
+  bajos: ['bass'],
+  amplificadores: ['amp'],
+  teclados: ['keys'],
+  bateria: ['drum'],
+  accesorios: ['pedal', 'strings'],
+};

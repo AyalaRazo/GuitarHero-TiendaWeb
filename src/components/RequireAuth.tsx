@@ -1,8 +1,16 @@
+import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import type { Role } from '../auth/AuthContext';
 
-export default function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated } = useAuth();
+interface RequireAuthProps {
+  children: ReactNode;
+  /* Si se indica, además de tener sesión hace falta ese rol (por ejemplo, 'admin') */
+  role?: Role;
+}
+
+export default function RequireAuth({ children, role }: RequireAuthProps) {
+  const { isAuthenticated, account } = useAuth();
   const location = useLocation();
 
   if (!isAuthenticated) {
@@ -10,5 +18,10 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return children;
+  // Con sesión pero sin el rol pedido, vuelve al panel de su cuenta
+  if (role && account?.role !== role) return <Navigate to="/cuenta" replace />;
+
+  return <>{children}</>;
 }
+
+export { RequireAuth };

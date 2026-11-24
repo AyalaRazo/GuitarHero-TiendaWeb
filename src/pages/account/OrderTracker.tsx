@@ -1,5 +1,5 @@
-import { STATUS_STEPS } from '../../data/sample';
-import type { OrderStatus } from '../../data/sample';
+import { STATUS_STEPS } from '../../store/orders';
+import type { OrderStatus } from '../../store/orders';
 import type { StatusTone } from '../../ui';
 
 const STEP_BASE =

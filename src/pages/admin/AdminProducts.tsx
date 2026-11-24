@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Dialog } from '../../components/Dialog';
 import { ProductArt } from '../../components/ProductArt';
-import { CATEGORIES, PRODUCTS, categoryById, formatPrice, searchProducts } from '../../data/catalog';
+import { CATEGORIES, categoryById, formatPrice, searchProducts } from '../../data/catalog';
 import type { CategoryId, Product } from '../../data/catalog';
+import { deleteProduct, resetCatalog, useProducts } from '../../store/products';
 import {
   btn,
   btnPeligro,
@@ -17,31 +19,45 @@ import {
   status,
   tituloSeccion,
 } from '../../ui';
+import { AdminTabs } from './AdminTabs';
 
 const TD_BASE = 'border-b border-dashed border-palorosa/35 px-4 py-[0.85rem] align-middle group-last/row:border-b-0 max-md:border-0 max-md:px-0 max-md:py-[0.4rem]';
 const TD = `${TD_BASE} max-md:block`;
 const TD_LABELED = `${TD_BASE} max-md:flex max-md:items-baseline max-md:justify-between max-md:gap-4 max-md:before:text-sm max-md:before:text-tinta-suave max-md:before:content-[attr(data-label)]`;
 const TH = 'border-b-2 border-palorosa px-4 py-[0.9rem] text-left text-sm font-semibold whitespace-nowrap text-tinta-suave';
 
+type Pending = { kind: 'delete'; product: Product } | { kind: 'reset' } | null;
+
 export function AdminProducts() {
+  const products = useProducts();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'todas' | CategoryId>('todas');
-  const [toDelete, setToDelete] = useState<Product | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [pending, setPending] = useState<Pending>(null);
+  const [notice, setNotice] = useState<string>((location.state as { notice?: string } | null)?.notice ?? '');
 
-  // El diálogo nativo se abre y se cierra según el producto elegido
+  // El aviso llegó por la navegación; se limpia de la historia para que no reaparezca al recargar
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (toDelete && !dialog.open) dialog.showModal();
-    if (!toDelete && dialog.open) dialog.close();
-  }, [toDelete]);
+    if ((location.state as { notice?: string } | null)?.notice) navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
-  const inCategory = category === 'todas' ? PRODUCTS : PRODUCTS.filter((product) => product.category === category);
+  const inCategory = category === 'todas' ? products : products.filter((product) => product.category === category);
   const rows = searchProducts(inCategory, query);
 
-  const featured = PRODUCTS.filter((product) => product.featured).length;
-  const onSale = PRODUCTS.filter((product) => product.oldPrice).length;
+  const featured = products.filter((product) => product.featured).length;
+  const onSale = products.filter((product) => product.oldPrice).length;
+
+  const confirm = () => {
+    if (pending?.kind === 'delete') {
+      const removed = deleteProduct(pending.product.id);
+      setNotice(removed ? `Eliminaste «${pending.product.name}».` : 'No se pudo eliminar el producto.');
+    } else if (pending?.kind === 'reset') {
+      resetCatalog();
+      setNotice('Restauramos el catálogo de ejemplo.');
+    }
+    setPending(null);
+  };
 
   return (
     <>
@@ -55,10 +71,21 @@ export function AdminProducts() {
         </Link>
       </div>
 
+      <AdminTabs />
+
+      {notice && (
+        <p className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md bg-laton px-4 py-3 font-semibold" role="status">
+          <span>{notice}</span>
+          <button className={linkButton} type="button" onClick={() => setNotice('')}>
+            Cerrar aviso
+          </button>
+        </p>
+      )}
+
       <dl className={`${paper} mt-6 grid grid-cols-3 [&_dd]:font-display [&_dd]:text-[2rem] [&_dd]:leading-[1.1] [&_dt]:text-sm [&_dt]:text-tinta-suave`}>
         <div className="px-5 py-4 not-first:border-l not-first:border-dashed not-first:border-palorosa/35 max-md:px-3">
           <dt>Productos</dt>
-          <dd>{PRODUCTS.length}</dd>
+          <dd>{products.length}</dd>
         </div>
         <div className="px-5 py-4 not-first:border-l not-first:border-dashed not-first:border-palorosa/35 max-md:px-3">
           <dt>Destacados</dt>
@@ -104,24 +131,37 @@ export function AdminProducts() {
         </div>
       </div>
 
-      <p className="mt-5 font-semibold" aria-live="polite">
-        {rows.length} {rows.length === 1 ? 'producto' : 'productos'}
-      </p>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-semibold" aria-live="polite">
+          {rows.length} {rows.length === 1 ? 'producto' : 'productos'}
+        </p>
+        <button className={linkButton} type="button" onClick={() => setPending({ kind: 'reset' })}>
+          Restaurar catálogo de ejemplo
+        </button>
+      </div>
 
       {rows.length === 0 ? (
         <div className={`${paperPad} mt-4 grid max-w-[34rem] justify-items-start gap-3`}>
-          <h2 className={paperTitle}>No hay productos con ese filtro</h2>
-          <p className={paperMuted}>Prueba con otra palabra o elige otra categoría.</p>
-          <button
-            className={btn('oscuro')}
-            type="button"
-            onClick={() => {
-              setQuery('');
-              setCategory('todas');
-            }}
-          >
-            Quitar filtros
-          </button>
+          <h2 className={paperTitle}>{products.length === 0 ? 'La tienda no tiene productos' : 'No hay productos con ese filtro'}</h2>
+          <p className={paperMuted}>
+            {products.length === 0 ? 'Agrega el primero para que aparezca en el catálogo.' : 'Prueba con otra palabra o elige otra categoría.'}
+          </p>
+          {products.length === 0 ? (
+            <Link className={btn('oscuro')} to="/cuenta/admin/productos/nuevo">
+              Nuevo producto
+            </Link>
+          ) : (
+            <button
+              className={btn('oscuro')}
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setCategory('todas');
+              }}
+            >
+              Quitar filtros
+            </button>
+          )}
         </div>
       ) : (
         <div className={`${paper} mt-3 overflow-x-auto`}>
@@ -129,10 +169,18 @@ export function AdminProducts() {
             <caption className="sr-only">Productos de la tienda</caption>
             <thead className="max-md:sr-only">
               <tr>
-                <th className={TH} scope="col">Producto</th>
-                <th className={TH} scope="col">Categoría</th>
-                <th className={TH} scope="col">Precio</th>
-                <th className={TH} scope="col">Estado</th>
+                <th className={TH} scope="col">
+                  Producto
+                </th>
+                <th className={TH} scope="col">
+                  Categoría
+                </th>
+                <th className={TH} scope="col">
+                  Precio
+                </th>
+                <th className={TH} scope="col">
+                  Estado
+                </th>
                 <th className={TH} scope="col">
                   <span className="sr-only">Acciones</span>
                 </th>
@@ -140,23 +188,37 @@ export function AdminProducts() {
             </thead>
             <tbody>
               {rows.map((product) => (
-                <tr className="group/row max-md:block max-md:border-b-2 max-md:border-palorosa max-md:px-4 max-md:pt-2 max-md:pb-3 max-md:last:border-b-0" key={product.id}>
+                <tr
+                  className="group/row max-md:block max-md:border-b-2 max-md:border-palorosa max-md:px-4 max-md:pt-2 max-md:pb-3 max-md:last:border-b-0"
+                  key={product.id}
+                >
                   <td className={TD}>
                     <div className="flex min-w-60 items-center gap-[0.85rem] max-md:min-w-0">
-                    <ProductArt
-                      kind={product.art}
-                      tone={product.tone}
-                      className="grid size-14 flex-none place-items-center rounded-[3px] bg-tweed p-[0.35rem] [&_svg]:size-full"
-                    />
-                    <div>
-                      <p className="leading-[1.3] font-semibold">{product.name}</p>
-                      <p className="text-xs leading-[1.35] text-tinta-suave">{product.detail}</p>
-                    </div>
+                      <ProductArt
+                        kind={product.art}
+                        tone={product.tone}
+                        image={product.image}
+                        className="grid size-14 flex-none place-items-center rounded-[3px] bg-tweed p-[0.35rem] [&_img]:size-full [&_img]:object-cover [&_svg]:size-full"
+                      />
+                      <div>
+                        <p className="leading-[1.3] font-semibold">
+                          <Link className="hover:underline" to={`/producto/${product.id}`}>
+                            {product.name}
+                          </Link>
+                        </p>
+                        <p className="text-xs leading-[1.35] text-tinta-suave">{product.detail}</p>
+                      </div>
                     </div>
                   </td>
-                  <td className={TD_LABELED} data-label="Categoría">{categoryById(product.category)?.name}</td>
-                  <td data-label="Precio" className={`${TD_LABELED} font-semibold whitespace-nowrap`}>
-                    {product.oldPrice && <span className="block text-xs font-normal text-tinta-suave line-through max-md:inline max-md:mr-2">{formatPrice(product.oldPrice)}</span>}
+                  <td className={TD_LABELED} data-label="Categoría">
+                    {categoryById(product.category)?.name}
+                  </td>
+                  <td className={`${TD_LABELED} font-semibold whitespace-nowrap`} data-label="Precio">
+                    {product.oldPrice && (
+                      <span className="block text-xs font-normal text-tinta-suave line-through max-md:mr-2 max-md:inline">
+                        {formatPrice(product.oldPrice)}
+                      </span>
+                    )}
                     {formatPrice(product.price)}
                   </td>
                   <td className={TD_LABELED} data-label="Estado">
@@ -171,7 +233,7 @@ export function AdminProducts() {
                       Editar
                       <span className="sr-only"> {product.name}</span>
                     </Link>
-                    <button className={`${linkButton} text-sunburst-rojo`} type="button" onClick={() => setToDelete(product)}>
+                    <button className={`${linkButton} text-sunburst-rojo`} type="button" onClick={() => setPending({ kind: 'delete', product })}>
                       Eliminar
                       <span className="sr-only"> {product.name}</span>
                     </button>
@@ -183,26 +245,26 @@ export function AdminProducts() {
         </div>
       )}
 
-      <dialog
-        className={`${paper} m-auto w-[min(28rem,calc(100vw-2rem))] border-0 p-7 backdrop:bg-pared-hondo/70`}
-        ref={dialogRef} 
-        onClose={() => setToDelete(null)}
-        aria-labelledby="dialog-title"
+      <Dialog
+        open={pending !== null}
+        title={pending?.kind === 'reset' ? '¿Restaurar el catálogo de ejemplo?' : '¿Eliminar este producto?'}
+        onClose={() => setPending(null)}
       >
-        <h2 className={paperTitle} id="dialog-title">
-          ¿Eliminar este producto?
-        </h2>
-        <p className="mt-3 mb-1 font-semibold">{toDelete?.name}</p>
-        <p className={paperMuted}>Deja de aparecer en la tienda. Esta acción no se puede deshacer.</p>
+        {pending?.kind === 'delete' && <p className="mt-3 mb-1 font-semibold">{pending.product.name}</p>}
+        <p className={paperMuted}>
+          {pending?.kind === 'reset'
+            ? 'Se pierden los productos que agregaste y los cambios que hiciste. Los pedidos no se tocan.'
+            : 'Deja de aparecer en la tienda y se quita de los carritos. Esta acción no se puede deshacer.'}
+        </p>
         <div className="mt-6 flex flex-wrap justify-end gap-[0.6rem]">
-          <button className={btn('lineaOscura')} type="button" onClick={() => setToDelete(null)}>
+          <button className={btn('lineaOscura')} type="button" onClick={() => setPending(null)}>
             Cancelar
           </button>
-          <button className={btnPeligro} type="button" onClick={() => setToDelete(null)}>
-            Eliminar producto
+          <button className={btnPeligro} type="button" onClick={confirm}>
+            {pending?.kind === 'reset' ? 'Restaurar catálogo' : 'Eliminar producto'}
           </button>
         </div>
-      </dialog>
+      </Dialog>
     </>
   );
 }

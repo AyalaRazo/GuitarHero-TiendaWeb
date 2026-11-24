@@ -19,7 +19,7 @@ export function CheckoutLayout() {
             <LockIcon className="size-[1.2rem] text-laton" />
             Pago seguro
           </p>
-          <Link className="justify-self-end font-semibold underline decoration-laton decoration-2 underline-offset-[0.25em] hover:text-laton-claro" to="/carrito">
+          <Link className="justify-self-end font-semibold underline decoration-laton decoration-2 underline-offset-[0.25em] hover:text-laton-claro" to="/cart">
             Volver al carrito
           </Link>
         </div>

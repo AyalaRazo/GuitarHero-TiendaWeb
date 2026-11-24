@@ -97,3 +97,11 @@ export function LockIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function HeartIcon({ className, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...stroke} className={className} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z" />
+    </svg>
+  );
+}
