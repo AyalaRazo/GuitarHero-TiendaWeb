@@ -1,6 +1,26 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { subscribeToNewsletter } from '../store/newsletter';
 import { btn, container, tituloSeccion } from '../ui';
 
 export function Newsletter() {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const result = subscribeToNewsletter(email);
+    if (!result.ok) {
+      setMessage({ error: true, text: result.error });
+      return;
+    }
+    setMessage({
+      error: false,
+      text: result.already ? 'Ese correo ya estaba suscrito. Gracias por seguirnos.' : 'Listo, te avisaremos cuando llegue equipo nuevo.',
+    });
+    setEmail('');
+  };
+
   return (
     <section className="bg-laton py-[clamp(3rem,6vw,4.5rem)] text-palorosa" aria-labelledby="newsletter-title">
       <div
@@ -13,7 +33,7 @@ export function Newsletter() {
           <p className="mt-3 max-w-[30rem] text-lg leading-[1.45]">Un correo por semana, con lo que entró al taller y lo que bajó de precio.</p>
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()}>
+        <form onSubmit={handleSubmit} noValidate>
           <label className="sr-only" htmlFor="correo">
             Correo electrónico
           </label>
@@ -24,13 +44,22 @@ export function Newsletter() {
               type="email"
               placeholder="tucorreo@ejemplo.com"
               autoComplete="email"
-              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={message?.error ? true : undefined}
+              aria-describedby="newsletter-note"
             />
             <button className={btn('oscuro')} type="submit">
               Suscribirme
             </button>
           </div>
-          <p className="mt-[0.6rem] text-sm">Puedes darte de baja cuando quieras.</p>
+          <p
+            className={`mt-[0.6rem] text-sm ${message?.error ? 'font-semibold text-sunburst-rojo' : message ? 'font-semibold' : ''}`}
+            id="newsletter-note"
+            role={message ? 'status' : undefined}
+          >
+            {message ? message.text : 'Puedes darte de baja cuando quieras.'}
+          </p>
         </form>
       </div>
     </section>

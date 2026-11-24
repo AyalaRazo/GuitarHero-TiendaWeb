@@ -3,7 +3,10 @@ import { Link, NavLink, Navigate, useParams, useSearchParams } from 'react-route
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Filters } from '../components/Filters';
 import { ProductTag } from '../components/ProductTag';
-import { CATEGORIES, PRODUCTS, categoryById, searchProducts } from '../data/catalog';
+import { CATEGORIES, categoryById, searchProducts } from '../data/catalog';
+import { EMPTY_FILTERS, applyFilters, buildFacets, countActive } from '../lib/filters';
+import type { FilterState } from '../lib/filters';
+import { useProducts } from '../store/products';
 import { btn, chip, container, paperMuted, paperPad, paperTitle, pegboard, tituloSeccion } from '../ui';
 
 type SortKey = 'destacados' | 'menor' | 'mayor';
@@ -13,6 +16,9 @@ export function Products() {
   const [params] = useSearchParams();
   const [sort, setSort] = useState<SortKey>('destacados');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Los filtros pertenecen a un pasillo: al cambiar de pasillo empiezan limpios
+  const [filterBox, setFilterBox] = useState<{ scope: string; state: FilterState }>({ scope: '', state: EMPTY_FILTERS });
+  const products = useProducts();
 
   const query = (params.get('q') ?? '').trim();
   const category = categoryById(categoria);
@@ -20,9 +26,13 @@ export function Products() {
   // Un pasillo que no existe vuelve a todo el catálogo
   if (categoria && !category) return <Navigate to="/productos" replace />;
 
-  const inCategory = category ? PRODUCTS.filter((product) => product.category === category.id) : PRODUCTS;
+  const scope = category?.id ?? 'todo';
+  const filters = filterBox.scope === scope ? filterBox.state : EMPTY_FILTERS;
+  const inCategory = category ? products.filter((product) => product.category === category.id) : products;
   const found = query ? searchProducts(inCategory, query) : inCategory;
-  const results = [...found].sort((a, b) => {
+  const facets = buildFacets(found);
+  const filtered = applyFilters(found, filters);
+  const results = [...filtered].sort((a, b) => {
     if (sort === 'menor') return a.price - b.price;
     if (sort === 'mayor') return b.price - a.price;
     return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
@@ -69,12 +79,18 @@ export function Products() {
 
       <section className={`${pegboard} pt-8 pb-section text-hueso`} aria-label="Resultados">
         <div className={`${container} grid grid-cols-[16.5rem_minmax(0,1fr)] items-start gap-8 max-lg:grid-cols-1 max-lg:gap-4`}>
-          <Filters key={category?.id ?? 'todo'} categoryId={category?.id} open={filtersOpen} />
+          <Filters
+            facets={facets}
+            state={filters}
+            onChange={(state) => setFilterBox({ scope, state })}
+            open={filtersOpen}
+          />
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-md bg-pared-hondo px-4 py-3">
               <p className="font-semibold" aria-live="polite">
                 {count} {count === 1 ? 'producto' : 'productos'}
+                {countActive(filters) > 0 && <span className="font-normal text-tweed"> con filtros</span>}
               </p>
 
               <button
@@ -124,13 +140,27 @@ export function Products() {
               </ul>
             ) : (
               <div className={`${paperPad} mt-6 grid max-w-[34rem] justify-items-start gap-3`}>
-                <h2 className={paperTitle}>No encontramos «{query}»</h2>
-                <p className={paperMuted}>
-                  Revisa que esté bien escrito o prueba con una palabra más corta, como «cuerdas» o «pedal».
-                </p>
-                <Link className={btn('oscuro')} to="/productos">
-                  Ver todo el catálogo
-                </Link>
+                {found.length > 0 ? (
+                  <>
+                    <h2 className={paperTitle}>Ningún producto cumple esos filtros</h2>
+                    <p className={paperMuted}>Quita alguno para ver más opciones.</p>
+                    <button className={btn('oscuro')} type="button" onClick={() => setFilterBox({ scope, state: EMPTY_FILTERS })}>
+                      Limpiar filtros
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h2 className={paperTitle}>{query ? `No encontramos «${query}»` : 'Este pasillo está vacío'}</h2>
+                    <p className={paperMuted}>
+                      {query
+                        ? 'Revisa que esté bien escrito o prueba con una palabra más corta, como «cuerdas» o «pedal».'
+                        : 'Todavía no hay productos aquí. Mira el resto del catálogo.'}
+                    </p>
+                    <Link className={btn('oscuro')} to="/productos">
+                      Ver todo el catálogo
+                    </Link>
+                  </>
+                )}
               </div>
             )}
           </div>

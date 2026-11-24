@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { CATEGORIES, countByCategory } from '../data/catalog';
+import { CATEGORIES } from '../data/catalog';
+import { countByCategory, useProducts } from '../store/products';
 import { container, tituloSeccion } from '../ui';
 import { ProductArt } from './ProductArt';
 
@@ -17,6 +18,7 @@ const ART_NORMAL = `${ART_BASE} top-1/2 right-5 h-[78%] w-[46%] -translate-y-1/2
 const ART_WIDE = `${ART_BASE} top-6 right-5 h-[42%] w-[62%] rotate-[4deg] group-hover/link:-translate-y-[2%] group-hover/link:rotate-[2deg] group-focus-visible/link:-translate-y-[2%] group-focus-visible/link:rotate-[2deg]`;
 
 export function Pasillos() {
+  const products = useProducts();
   return (
     <section className="bg-tweed py-section text-palorosa" id="pasillos" aria-labelledby="pasillos-title">
       <div className={container}>
@@ -49,7 +51,7 @@ export function Pasillos() {
                     </span>
                     <span className="text-sm leading-[1.4] text-tweed">{category.blurb}</span>
                     <span className="mt-[0.35rem] text-sm font-semibold text-laton-claro">
-                      {countByCategory(category.id)} modelos
+                      {countByCategory(products, category.id)} {countByCategory(products, category.id) === 1 ? 'modelo' : 'modelos'}
                     </span>
                   </span>
                 </Link>
