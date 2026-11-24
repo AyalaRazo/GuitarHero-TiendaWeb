@@ -13,7 +13,7 @@ type BtnVariant = 'laton' | 'line' | 'oscuro' | 'lineaOscura';
 /* Cada variante define fondo, borde y color completos; el tamaño y el modo "block"
    se eligen con una sola clase de cada tipo para que Tailwind no tenga que desempatar. */
 const BTN_BASE =
-  'items-center justify-center gap-2 rounded-md border-2 text-center leading-[1.2] font-semibold transition-colors duration-200';
+  'items-center justify-center gap-2 rounded-md border-2 text-center leading-[1.2] font-semibold transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50';
 
 const BTN_VARIANTS: Record<BtnVariant, string> = {
   laton: 'border-laton bg-laton text-palorosa hover:border-laton-claro hover:bg-laton-claro',
