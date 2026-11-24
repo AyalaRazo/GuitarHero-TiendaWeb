@@ -10,6 +10,8 @@ interface ProductArtProps {
   kind: ArtKind;
   tone?: ArtTone;
   className?: string;
+  /* Foto real del producto; si existe reemplaza a la ilustración */
+  image?: string;
 }
 
 const TONES: Record<ArtTone, [string, string, string]> = {
@@ -268,8 +270,16 @@ function Drum({ uid, tone }: { uid: string; tone: ArtTone }) {
   );
 }
 
-export function ProductArt({ kind, tone = 'sunburst', className }: ProductArtProps) {
+export function ProductArt({ kind, tone = 'sunburst', className, image }: ProductArtProps) {
   const uid = useId().replace(/:/g, '');
+
+  if (image) {
+    return (
+      <div className={className}>
+        <img className="max-h-full max-w-full object-contain" src={image} alt="" loading="lazy" />
+      </div>
+    );
+  }
 
   const art = (() => {
     switch (kind) {
