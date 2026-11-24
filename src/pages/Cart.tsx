@@ -1,14 +1,23 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { ProductArt } from '../components/ProductArt';
 import { formatPrice } from '../data/catalog';
 import {
-  CART_LINES,
+  COUPONS,
   FREE_SHIPPING_FROM,
+  MAX_QTY,
+  applyCoupon,
   cartSubtotal,
   cartUnits,
-  shippingCost,
-} from '../data/sample';
+  couponStore,
+  removeFromCart,
+  setCartQty,
+  totalsFor,
+  useCartLines,
+  useCoupon,
+} from '../store/cart';
 import {
   btn,
   container,
@@ -34,16 +43,27 @@ const AREAS = "max-[40rem]:grid-cols-[4.5rem_minmax(0,1fr)] max-[40rem]:[grid-te
 const QTY_BTN = 'grid size-[2.4rem] place-items-center border-0 bg-transparent text-xl leading-none transition-colors duration-200 hover:bg-palorosa/8';
 
 export function Cart() {
-  const [params] = useSearchParams();
-  // Para revisar el diseño del carrito vacío: /carrito?vacio
-  const lines = params.has('vacio') ? [] : CART_LINES;
+  const lines = useCartLines();
+  const coupon = useCoupon();
+  const [code, setCode] = useState('');
+  const [couponError, setCouponError] = useState('');
 
   const subtotal = cartSubtotal(lines);
   const units = cartUnits(lines);
-  const shipping = shippingCost(subtotal, 'estandar');
-  const total = subtotal + shipping;
-  const missing = Math.max(0, FREE_SHIPPING_FROM - subtotal);
-  const progress = Math.min(100, Math.round((subtotal / FREE_SHIPPING_FROM) * 100));
+  const { discount, shipping, total } = totalsFor(subtotal, 'estandar', coupon);
+  const missing = Math.max(0, FREE_SHIPPING_FROM - (subtotal - discount));
+  const progress = Math.min(100, Math.round(((subtotal - discount) / FREE_SHIPPING_FROM) * 100));
+
+  const handleCoupon = (event: FormEvent) => {
+    event.preventDefault();
+    const result = applyCoupon(code);
+    if (result.ok) {
+      setCode('');
+      setCouponError('');
+    } else {
+      setCouponError(result.error);
+    }
+  };
 
   return (
     <section className="bg-pared pt-7 pb-section text-hueso" aria-labelledby="carrito-title">
@@ -91,17 +111,20 @@ export function Cart() {
                       <ProductArt
                         kind={product.art}
                         tone={product.tone}
-                        className="grid aspect-square place-items-center rounded-[3px] bg-tweed p-[0.6rem] max-[40rem]:[grid-area:art] [&_svg]:size-full"
+                        image={product.image}
+                        className="grid aspect-square place-items-center rounded-[3px] bg-tweed p-[0.6rem] max-[40rem]:[grid-area:art] [&_img]:size-full [&_svg]:size-full"
                       />
 
                       <div className="grid justify-items-start gap-[0.2rem] max-[40rem]:[grid-area:info]">
                         <h2 className="text-base leading-[1.3] font-semibold">
-                          <Link className="hover:underline hover:underline-offset-[0.2em]" to={`/productos/${product.category}`}>{product.name}</Link>
+                          <Link className="hover:underline hover:underline-offset-[0.2em]" to={`/producto/${product.id}`}>
+                            {product.name}
+                          </Link>
                         </h2>
                         <p className="text-sm text-tinta-suave">{product.detail}</p>
                         <p className="text-sm">{formatPrice(product.price)} cada uno</p>
-                        <button className={`${linkButton} mt-[0.4rem] text-sm`} type="button">
-                          Quitar
+                        <button className={`${linkButton} mt-[0.4rem] text-sm`} type="button" onClick={() => removeFromCart(product.id)}>
+                          Quitar<span className="sr-only"> {product.name}</span>
                         </button>
                       </div>
 
@@ -110,11 +133,25 @@ export function Cart() {
                         role="group" 
                         aria-label={`Cantidad de ${product.name}`}
                       >
-                        <button className={QTY_BTN} type="button" aria-label="Quitar una unidad">
+                        <button
+                          className={QTY_BTN}
+                          type="button"
+                          aria-label="Quitar una unidad"
+                          disabled={qty <= 1}
+                          onClick={() => setCartQty(product.id, qty - 1)}
+                        >
                           −
                         </button>
-                        <span className="min-w-8 text-center font-bold">{qty}</span>
-                        <button className={QTY_BTN} type="button" aria-label="Agregar una unidad">
+                        <span className="min-w-8 text-center font-bold" aria-live="polite">
+                          {qty}
+                        </span>
+                        <button
+                          className={QTY_BTN}
+                          type="button"
+                          aria-label="Agregar una unidad"
+                          disabled={qty >= MAX_QTY}
+                          onClick={() => setCartQty(product.id, qty + 1)}
+                        >
                           +
                         </button>
                       </div>
@@ -152,6 +189,12 @@ export function Cart() {
                     <dt>Subtotal</dt>
                     <dd>{formatPrice(subtotal)}</dd>
                   </div>
+                  {discount > 0 && coupon && (
+                    <div className={receiptRow}>
+                      <dt>Descuento {coupon}</dt>
+                      <dd className={receiptFree}>-{formatPrice(discount)}</dd>
+                    </div>
+                  )}
                   <div className={receiptRow}>
                     <dt>Envío estándar</dt>
                     <dd className={shipping === 0 ? receiptFree : undefined}>
@@ -160,17 +203,41 @@ export function Cart() {
                   </div>
                 </dl>
 
-                <form className="mt-5 grid gap-[0.35rem]" onSubmit={(event) => event.preventDefault()}>
-                  <label className={fieldLabel} htmlFor="cupon">
-                    Código de descuento
-                  </label>
-                  <div className="flex gap-2">
-                    <input id="cupon" className={fieldInput} placeholder="Escríbelo aquí" />
-                    <button className={btn('lineaOscura', { sm: true })} type="submit">
-                      Aplicar
+                {coupon ? (
+                  <p className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-md bg-laton/25 px-3 py-2 text-sm" role="status">
+                    <span>
+                      <strong>{coupon}</strong>: {COUPONS[coupon]?.label}
+                    </span>
+                    <button className={linkButton} type="button" onClick={() => couponStore.set(null)}>
+                      Quitar
                     </button>
-                  </div>
-                </form>
+                  </p>
+                ) : (
+                  <form className="mt-5 grid gap-[0.35rem]" onSubmit={handleCoupon} noValidate>
+                    <label className={fieldLabel} htmlFor="cupon">
+                      Código de descuento
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="cupon"
+                        className={fieldInput}
+                        placeholder="Escríbelo aquí"
+                        value={code}
+                        onChange={(event) => setCode(event.target.value)}
+                        aria-invalid={couponError ? true : undefined}
+                        aria-describedby={couponError ? 'cupon-error' : undefined}
+                      />
+                      <button className={btn('lineaOscura', { sm: true })} type="submit">
+                        Aplicar
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="text-sm font-semibold text-sunburst-rojo" id="cupon-error">
+                        {couponError}
+                      </p>
+                    )}
+                  </form>
+                )}
 
                 <p className={receiptTotal}>
                   <span className={receiptTotalLabel}>Total</span>
