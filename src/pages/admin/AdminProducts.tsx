@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProductArt } from '../../components/ProductArt';
-import { CATEGORIES, PRODUCTS, categoryById, formatPrice, searchProducts } from '../../data/catalog';
+import { useProducts } from '../../context/ProductContext';
+import { CATEGORIES, categoryById, formatPrice, searchProducts } from '../../data/catalog';
 import type { CategoryId, Product } from '../../data/catalog';
 import {
   btn,
@@ -24,12 +25,12 @@ const TD_LABELED = `${TD_BASE} max-md:flex max-md:items-baseline max-md:justify-
 const TH = 'border-b-2 border-palorosa px-4 py-[0.9rem] text-left text-sm font-semibold whitespace-nowrap text-tinta-suave';
 
 export function AdminProducts() {
+  const { products, deleteProduct } = useProducts();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'todas' | CategoryId>('todas');
   const [toDelete, setToDelete] = useState<Product | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // El diálogo nativo se abre y se cierra según el producto elegido
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -37,11 +38,17 @@ export function AdminProducts() {
     if (!toDelete && dialog.open) dialog.close();
   }, [toDelete]);
 
-  const inCategory = category === 'todas' ? PRODUCTS : PRODUCTS.filter((product) => product.category === category);
+  const handleConfirmDelete = () => {
+    if (!toDelete) return;
+    deleteProduct(toDelete.id);
+    setToDelete(null);
+  };
+
+  const inCategory = category === 'todas' ? products : products.filter((product) => product.category === category);
   const rows = searchProducts(inCategory, query);
 
-  const featured = PRODUCTS.filter((product) => product.featured).length;
-  const onSale = PRODUCTS.filter((product) => product.oldPrice).length;
+  const featured = products.filter((product) => product.featured).length;
+  const onSale = products.filter((product) => product.oldPrice).length;
 
   return (
     <>
@@ -58,7 +65,7 @@ export function AdminProducts() {
       <dl className={`${paper} mt-6 grid grid-cols-3 [&_dd]:font-display [&_dd]:text-[2rem] [&_dd]:leading-[1.1] [&_dt]:text-sm [&_dt]:text-tinta-suave`}>
         <div className="px-5 py-4 not-first:border-l not-first:border-dashed not-first:border-palorosa/35 max-md:px-3">
           <dt>Productos</dt>
-          <dd>{PRODUCTS.length}</dd>
+          <dd>{products.length}</dd>
         </div>
         <div className="px-5 py-4 not-first:border-l not-first:border-dashed not-first:border-palorosa/35 max-md:px-3">
           <dt>Destacados</dt>
@@ -143,15 +150,15 @@ export function AdminProducts() {
                 <tr className="group/row max-md:block max-md:border-b-2 max-md:border-palorosa max-md:px-4 max-md:pt-2 max-md:pb-3 max-md:last:border-b-0" key={product.id}>
                   <td className={TD}>
                     <div className="flex min-w-60 items-center gap-[0.85rem] max-md:min-w-0">
-                    <ProductArt
-                      kind={product.art}
-                      tone={product.tone}
-                      className="grid size-14 flex-none place-items-center rounded-[3px] bg-tweed p-[0.35rem] [&_svg]:size-full"
-                    />
-                    <div>
-                      <p className="leading-[1.3] font-semibold">{product.name}</p>
-                      <p className="text-xs leading-[1.35] text-tinta-suave">{product.detail}</p>
-                    </div>
+                      <ProductArt
+                        kind={product.art}
+                        tone={product.tone}
+                        className="grid size-14 flex-none place-items-center rounded-[3px] bg-tweed p-[0.35rem] [&_svg]:size-full"
+                      />
+                      <div>
+                        <p className="leading-[1.3] font-semibold">{product.name}</p>
+                        <p className="text-xs leading-[1.35] text-tinta-suave">{product.detail}</p>
+                      </div>
                     </div>
                   </td>
                   <td className={TD_LABELED} data-label="Categoría">{categoryById(product.category)?.name}</td>
@@ -185,7 +192,7 @@ export function AdminProducts() {
 
       <dialog
         className={`${paper} m-auto w-[min(28rem,calc(100vw-2rem))] border-0 p-7 backdrop:bg-pared-hondo/70`}
-        ref={dialogRef} 
+        ref={dialogRef}
         onClose={() => setToDelete(null)}
         aria-labelledby="dialog-title"
       >
@@ -198,7 +205,7 @@ export function AdminProducts() {
           <button className={btn('lineaOscura')} type="button" onClick={() => setToDelete(null)}>
             Cancelar
           </button>
-          <button className={btnPeligro} type="button" onClick={() => setToDelete(null)}>
+          <button className={btnPeligro} type="button" onClick={handleConfirmDelete}>
             Eliminar producto
           </button>
         </div>

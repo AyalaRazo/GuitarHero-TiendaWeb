@@ -3,12 +3,14 @@ import { Link, NavLink, Navigate, useParams, useSearchParams } from 'react-route
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Filters } from '../components/Filters';
 import { ProductTag } from '../components/ProductTag';
-import { CATEGORIES, PRODUCTS, categoryById, searchProducts } from '../data/catalog';
+import { useProducts } from '../context/ProductContext';
+import { CATEGORIES, categoryById, searchProducts } from '../data/catalog';
 import { btn, chip, container, paperMuted, paperPad, paperTitle, pegboard, tituloSeccion } from '../ui';
 
 type SortKey = 'destacados' | 'menor' | 'mayor';
 
 export function Products() {
+  const { products } = useProducts();
   const { categoria } = useParams();
   const [params] = useSearchParams();
   const [sort, setSort] = useState<SortKey>('destacados');
@@ -17,10 +19,9 @@ export function Products() {
   const query = (params.get('q') ?? '').trim();
   const category = categoryById(categoria);
 
-  // Un pasillo que no existe vuelve a todo el catálogo
   if (categoria && !category) return <Navigate to="/productos" replace />;
 
-  const inCategory = category ? PRODUCTS.filter((product) => product.category === category.id) : PRODUCTS;
+  const inCategory = category ? products.filter((product) => product.category === category.id) : products;
   const found = query ? searchProducts(inCategory, query) : inCategory;
   const results = [...found].sort((a, b) => {
     if (sort === 'menor') return a.price - b.price;

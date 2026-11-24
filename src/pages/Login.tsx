@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth, verifyCredentials } from '../auth/AuthContext';
 
-const ADMIN_USERS = [
-  { email: 'erick@uabc.edu.mx', password: 'password123' },
-  { email: 'luis@uabc.edu.mx', password: 'password123' },
-  { email: 'julio@uabc.edu.mx', password: 'password123' },
-];
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -37,20 +32,16 @@ export default function Login() {
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validate()) {
-      const validAdmin = ADMIN_USERS.find(
-        (admin) => admin.email === email && admin.password === password
-      );
-
-      if (validAdmin) {
-        login(email);
-        navigate('/admin/products'); 
-      } else {
-        setErrors({ auth: 'Credenciales incorrectas o usuario no autorizado' });
-      }
+  e.preventDefault();
+  if (validate()) {
+    if (verifyCredentials(email, password)) {
+      login(email);
+      navigate('/cuenta/admin');
+    } else {
+      setErrors({ auth: 'Credenciales incorrectas o usuario no autorizado' });
     }
-  };
+  }
+};
 
   return (
     <div className="flex justify-center items-center min-h-[80vh] px-4">

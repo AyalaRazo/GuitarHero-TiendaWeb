@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ProductTag } from '../../components/ProductTag';
-import { CATEGORIES, productById } from '../../data/catalog';
+import { useProducts } from '../../context/ProductContext';
+import { CATEGORIES } from '../../data/catalog';
 import type { ArtKind, ArtTone, CategoryId, Product } from '../../data/catalog';
 import { btn, check, field, fieldHint, fieldInput, fieldLabel, fieldWide, formGrid, paperMuted, paperPad, paperTitle, pegboard, tituloSeccion } from '../../ui';
 
@@ -36,6 +37,13 @@ interface FormState {
   featured: boolean;
 }
 
+interface FormErrors {
+  name?: string;
+  detail?: string;
+  price?: string;
+  oldPrice?: string;
+}
+
 const EMPTY: FormState = {
   name: '',
   detail: '',
@@ -58,10 +66,10 @@ const fromProduct = (product: Product): FormState => ({
   featured: Boolean(product.featured),
 });
 
-/* La clave reinicia el formulario al pasar de "nuevo" a editar, o de un producto a otro */
 export function AdminProductForm() {
   const { id } = useParams();
-  const editing = id ? productById(id) : undefined;
+  const { getProductById } = useProducts();
+  const editing = id ? getProductById(id) : undefined;
 
   if (id && !editing) {
     return (
@@ -80,25 +88,75 @@ export function AdminProductForm() {
 
 function ProductForm({ editing }: { editing?: Product }) {
   const navigate = useNavigate();
+  const { addProduct, updateProduct } = useProducts();
   const [form, setForm] = useState<FormState>(editing ? fromProduct(editing) : EMPTY);
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+    if (key in errors) {
+      setErrors((current) => ({ ...current, [key]: undefined }));
+    }
+  };
+
+  const validate = (): boolean => {
+    const next: FormErrors = {};
+    const priceNum = Number(form.price);
+    const oldPriceNum = form.oldPrice.trim() ? Number(form.oldPrice) : undefined;
+
+    if (form.name.trim().length < 3) {
+      next.name = 'Escribe un nombre de al menos 3 caracteres.';
+    }
+    if (form.detail.trim().length < 5) {
+      next.detail = 'Agrega una descripción corta de al menos 5 caracteres.';
+    }
+    if (!form.price.trim() || Number.isNaN(priceNum) || priceNum <= 0) {
+      next.price = 'Ingresa un precio válido mayor a 0.';
+    }
+    if (oldPriceNum !== undefined && (Number.isNaN(oldPriceNum) || oldPriceNum <= priceNum)) {
+      next.oldPrice = 'El precio anterior debe ser mayor al precio actual.';
+    }
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const resolvedArt: ArtKind =
+    editing && editing.category === form.category ? editing.art : CATEGORY_ART[form.category];
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (!validate()) return;
+
+    const payload: Omit<Product, 'id'> = {
+      name: form.name.trim(),
+      detail: form.detail.trim(),
+      price: Number(form.price),
+      oldPrice: form.oldPrice.trim() ? Number(form.oldPrice) : undefined,
+      category: form.category,
+      art: resolvedArt,
+      tone: form.tone,
+      badge: form.badge.trim() || undefined,
+      featured: form.featured,
+    };
+
+    if (editing) {
+      updateProduct(editing.id, payload);
+    } else {
+      addProduct(payload);
+    }
+
     navigate('/cuenta/admin');
   };
 
-  // La etiqueta de la derecha se arma con lo que se va escribiendo
   const preview: Product = {
-    id: 'vista-previa',
+    id: editing?.id ?? 'vista-previa',
     name: form.name.trim() || 'Nombre del producto',
     detail: form.detail.trim() || 'Descripción corta del producto',
     price: Number(form.price) || 0,
     oldPrice: Number(form.oldPrice) || undefined,
     category: form.category,
-    art: CATEGORY_ART[form.category],
+    art: resolvedArt,
     tone: form.tone,
     badge: form.badge.trim() || undefined,
     featured: form.featured,
@@ -123,7 +181,9 @@ function ProductForm({ editing }: { editing?: Product }) {
                 className={fieldInput}
                 value={form.name}
                 onChange={(event) => update('name', event.target.value)}
+                aria-invalid={Boolean(errors.name)}
               />
+              {errors.name && <p className="mt-1 text-sm font-medium text-sunburst-rojo">{errors.name}</p>}
             </div>
 
             <div className={fieldWide}>
@@ -136,10 +196,15 @@ function ProductForm({ editing }: { editing?: Product }) {
                 value={form.detail}
                 onChange={(event) => update('detail', event.target.value)}
                 aria-describedby="p-detalle-hint"
+                aria-invalid={Boolean(errors.detail)}
               />
-              <p className={fieldHint} id="p-detalle-hint">
-                Una línea. Aparece debajo del nombre en la etiqueta.
-              </p>
+              {errors.detail ? (
+                <p className="mt-1 text-sm font-medium text-sunburst-rojo">{errors.detail}</p>
+              ) : (
+                <p className={fieldHint} id="p-detalle-hint">
+                  Una línea. Aparece debajo del nombre en la etiqueta.
+                </p>
+              )}
             </div>
 
             <div className={field}>
@@ -189,7 +254,9 @@ function ProductForm({ editing }: { editing?: Product }) {
                 placeholder="0"
                 value={form.price}
                 onChange={(event) => update('price', event.target.value.replace(/[^\d]/g, ''))}
+                aria-invalid={Boolean(errors.price)}
               />
+              {errors.price && <p className="mt-1 text-sm font-medium text-sunburst-rojo">{errors.price}</p>}
             </div>
 
             <div className={field}>
@@ -204,10 +271,15 @@ function ProductForm({ editing }: { editing?: Product }) {
                 value={form.oldPrice}
                 onChange={(event) => update('oldPrice', event.target.value.replace(/[^\d]/g, ''))}
                 aria-describedby="p-anterior-hint"
+                aria-invalid={Boolean(errors.oldPrice)}
               />
-              <p className={fieldHint} id="p-anterior-hint">
-                Llénalo solo si está en oferta.
-              </p>
+              {errors.oldPrice ? (
+                <p className="mt-1 text-sm font-medium text-sunburst-rojo">{errors.oldPrice}</p>
+              ) : (
+                <p className={fieldHint} id="p-anterior-hint">
+                  Llénalo solo si está en oferta.
+                </p>
+              )}
             </div>
 
             <div className={field}>

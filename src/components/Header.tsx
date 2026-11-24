@@ -18,21 +18,19 @@ export function Header() {
   const [query, setQuery] = useState(urlQuery);
   const { isAuthenticated, user, logout } = useAuth();
 
-  // Estado dinámico para contar las unidades reales del carrito desde el localStorage
   const [units, setUnits] = useState(() => {
     const saved = localStorage.getItem('cart_lines');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         return parsed.reduce((sum: number, item: any) => sum + item.qty, 0);
-      } catch (e) {
+      } catch {
         return CART_LINES.reduce((sum, item) => sum + item.qty, 0);
       }
     }
     return CART_LINES.reduce((sum, item) => sum + item.qty, 0);
   });
 
-  // Escucha los cambios del localStorage o el evento de almacenamiento para actualizar el número al instante
   useEffect(() => {
     const updateCartCount = () => {
       const saved = localStorage.getItem('cart_lines');
@@ -41,7 +39,7 @@ export function Header() {
           const parsed = JSON.parse(saved);
           const totalUnits = parsed.reduce((sum: number, item: any) => sum + item.qty, 0);
           setUnits(totalUnits);
-        } catch (e) {
+        } catch {
           setUnits(0);
         }
       } else {
@@ -74,9 +72,7 @@ export function Header() {
     navigate('/');
   };
 
-  const userName = typeof user === 'string'
-    ? user.split('@')[0]
-    : (user as any)?.firstName || (user as any)?.email?.split('@')[0] || 'Mi cuenta';
+  const userName = user?.firstName || user?.email?.split('@')[0] || 'Mi cuenta';
 
   return (
     <>
@@ -84,6 +80,11 @@ export function Header() {
         <div className={`${container} flex justify-between gap-4 py-2`}>
           <p>Atención por chat de lunes a sábado, de 10:00 a 19:00</p>
           <nav className="flex gap-5 max-[52rem]:hidden" aria-label="Pedidos y ayuda">
+            {isAuthenticated && user?.role === 'admin' && (
+              <Link className="font-semibold text-laton-claro hover:text-hueso" to="/cuenta/admin">
+                Panel admin
+              </Link>
+            )}
             <Link className="hover:text-hueso" to="/cuenta/pedidos">
               Mis pedidos
             </Link>
@@ -135,6 +136,11 @@ export function Header() {
                   <UserIcon className="size-6" />
                   <span className={ICON_LABEL}>{userName}</span>
                 </Link>
+                {user?.role === 'admin' && (
+                  <Link className={`${ICON_LINK} text-laton-claro`} to="/cuenta/admin">
+                    <span className={ICON_LABEL}>Admin</span>
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={handleLogout}

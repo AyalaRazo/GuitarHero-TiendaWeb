@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import { ProductArt } from '../../components/ProductArt';
-import { formatPrice } from '../../data/catalog';
+import { useProducts } from '../../context/ProductContext';
+import { formatPrice, productById } from '../../data/catalog';
 import { ADDRESSES, ORDERS } from '../../data/sample';
 import type { Order } from '../../data/sample';
 import { btn, chipClaro, paperMuted, paperPad, paperTitle, status, tituloSeccion } from '../../ui';
+import { generateReceiptPDF } from '../../utils/generatePDF';
 import { OrderTracker, statusTone } from './OrderTracker';
 
 type Filter = 'todos' | 'curso' | 'entregados' | 'cancelados';
@@ -24,39 +27,59 @@ const matches = (order: Order, filter: Filter): boolean => {
 };
 
 export function Orders() {
+  const { user } = useAuth();
+  const { getProductById } = useProducts();
   const [filter, setFilter] = useState<Filter>('todos');
-  const address = ADDRESSES.find((a) => a.primary) ?? ADDRESSES[0];
 
-  // Obtenemos los pedidos combinando los de ejemplo y el último pedido realizado por cualquier cuenta
-  const allOrders = (() => {
-    const list = [...ORDERS];
+  const address = (() => {
     try {
-      const latest = localStorage.getItem('latest_order');
-      if (latest) {
-        const parsedOrder = JSON.parse(latest);
-        // Evitamos duplicados si el ID ya existe en la lista
-        if (!list.some((o) => o.id === parsedOrder.id)) {
-          const customOrder: Order = {
-            id: parsedOrder.id,
-            date: parsedOrder.date,
-            status: parsedOrder.status || 'Recibido',
-            items: parsedOrder.items.map((i: any) => ({
-              productId: i.product?.id || i.productId || 'p-custom',
-              qty: i.qty,
-              ...(i.product ? { product: i.product } : {}),
-            })),
-            shipping: parsedOrder.shipping ?? 0,
-          };
-          list.unshift(customOrder);
+      const saved = localStorage.getItem(`user_addresses_${user?.email ?? 'guest'}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.find((a: any) => a.primary) ?? parsed[0];
+        }
+      }
+    } catch {
+      // Fallback a dirección por defecto
+    }
+    return ADDRESSES.find((a) => a.primary) ?? ADDRESSES[0];
+  })();
+
+  const allOrders = (() => {
+    const map = new Map<string, any>();
+
+    try {
+      const historyRaw = localStorage.getItem('orders_history');
+      if (historyRaw) {
+        const history = JSON.parse(historyRaw);
+        if (Array.isArray(history)) {
+          history.forEach((o: any) => {
+            if (o?.id) map.set(o.id, o);
+          });
+        }
+      }
+
+      const latestRaw = localStorage.getItem('latest_order');
+      if (latestRaw) {
+        const latest = JSON.parse(latestRaw);
+        if (latest?.id && !map.has(latest.id)) {
+          map.set(latest.id, latest);
         }
       }
     } catch (e) {
-      console.error('Error leyendo pedido del almacenamiento', e);
+      console.error('Error leyendo pedidos del almacenamiento', e);
     }
-    return list;
+
+    ORDERS.forEach((o) => {
+      if (!map.has(o.id)) map.set(o.id, o);
+    });
+
+    return Array.from(map.values());
   })();
 
   const visible = allOrders.filter((order) => matches(order, filter));
+  const fullUserName = user ? `${user.firstName} ${user.lastName}`.trim() : 'Cliente Guitar Hero';
 
   return (
     <>
@@ -87,11 +110,12 @@ export function Orders() {
       ) : (
         <ul className="mt-6 grid gap-6">
           {visible.map((order) => {
-            const lines = order.items.map((item: any) => {
+            const lines = (order.items ?? []).map((item: any) => {
               if (item.product) return item;
+              const catalogMatch = getProductById(item.productId) ?? productById(item.productId);
               return {
-                product: {
-                  id: item.productId || Math.random(),
+                product: catalogMatch ?? {
+                  id: item.productId || 'p-custom',
                   name: item.name || 'Instrumento / Producto',
                   price: item.price || 0,
                   art: item.art || 'electric',
@@ -102,8 +126,22 @@ export function Orders() {
             });
 
             const computedTotal =
-              lines.reduce((sum: number, i: any) => sum + i.product.price * i.qty, 0) +
-              (order.shipping || 0);
+              typeof order.total === 'number'
+                ? order.total
+                : lines.reduce((sum: number, i: any) => sum + i.product.price * i.qty, 0) +
+                  (order.shipping || 0);
+
+            const handleDownloadReceipt = () => {
+              generateReceiptPDF({
+                orderId: order.id,
+                date: order.date,
+                status: order.status,
+                total: computedTotal,
+                customerName: order.customerName || fullUserName,
+                customerEmail: order.customerEmail || user?.email || 'cliente@guitarhero.mx',
+                items: lines,
+              });
+            };
 
             return (
               <li className={paperPad} key={order.id}>
@@ -150,16 +188,25 @@ export function Orders() {
                       ))}
                       <li className="flex justify-between gap-4">
                         <span>Envío</span>
-                        <span>{order.shipping === 0 ? 'Gratis' : formatPrice(order.shipping)}</span>
+                        <span>{order.shipping === 0 ? 'Gratis' : formatPrice(order.shipping || 0)}</span>
                       </li>
                     </ul>
                     <p className={`${paperMuted} mt-[0.9rem] text-sm`}>
-                      Entrega en {address.street}, {address.area}, {address.city}.
+                      Entrega en {address.street}, {address.area ? `${address.area}, ` : ''}{address.city}.
                     </p>
                   </details>
-                  <Link className={btn('lineaOscura', { sm: true })} to="/carrito">
-                    Volver a comprar
-                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className={btn('lineaOscura', { sm: true })}
+                      type="button"
+                      onClick={handleDownloadReceipt}
+                    >
+                      Recibo PDF
+                    </button>
+                    <Link className={btn('lineaOscura', { sm: true })} to="/carrito">
+                      Volver a comprar
+                    </Link>
+                  </div>
                 </div>
               </li>
             );

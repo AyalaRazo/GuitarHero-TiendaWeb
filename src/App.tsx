@@ -1,5 +1,6 @@
-import { Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
+import { ProductProvider } from './context/ProductContext';
 import RequireAuth from './components/RequireAuth';
 import { ScrollToTop } from './components/ScrollToTop';
 import { CheckoutLayout } from './layouts/CheckoutLayout';
@@ -23,56 +24,51 @@ import { Products } from './pages/Products';
 export function App() {
   return (
     <AuthProvider>
-      <ScrollToTop />
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route index element={<Home />} />
-          <Route path="productos" element={<Products />} />
-          <Route path="productos/:categoria" element={<Products />} />
-          <Route path="carrito" element={<Cart />} />
-          <Route path="pedido-confirmado" element={<OrderConfirmed />} />
-          <Route path="login" element={<Login />} />
-          <Route path="cuenta/ingresar" element={<Login />} />
-          <Route
-            path="cuenta"
-            element={
-              <RequireAuth>
-                <AccountLayout />
-              </RequireAuth>
-            }
-          >
-            <Route index element={<Overview />} />
-            <Route path="pedidos" element={<Orders />} />
-            <Route path="direcciones" element={<Addresses />} />
-            <Route path="favoritos" element={<Favorites />} />
-            <Route path="datos" element={<Profile />} />
-            <Route path="admin" element={<Outlet />}>
-              <Route index element={<AdminProducts />} />
-              <Route path="productos/nuevo" element={<AdminProductForm />} />
-              <Route path="productos/:id" element={<AdminProductForm />} />
+      <ProductProvider>
+        <ScrollToTop />
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route index element={<Home />} />
+            <Route path="productos" element={<Products />} />
+            <Route path="productos/:categoria" element={<Products />} />
+            <Route path="carrito" element={<Cart />} />
+            <Route path="pedido-confirmado" element={<OrderConfirmed />} />
+            <Route path="login" element={<Login />} />
+            <Route path="cuenta/ingresar" element={<Login />} />
+            <Route
+              path="cuenta"
+              element={
+                <RequireAuth>
+                  <AccountLayout />
+                </RequireAuth>
+              }
+            >
+              <Route index element={<Overview />} />
+              <Route path="pedidos" element={<Orders />} />
+              <Route path="direcciones" element={<Addresses />} />
+              <Route path="favoritos" element={<Favorites />} />
+              <Route path="datos" element={<Profile />} />
+              <Route path="admin" element={<Outlet />}>
+                <Route index element={<AdminProducts />} />
+                <Route path="productos/nuevo" element={<AdminProductForm />} />
+                <Route path="productos/:id" element={<AdminProductForm />} />
+              </Route>
             </Route>
+            <Route path="admin/products" element={<Navigate to="/cuenta/admin" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
-          <Route
-            path="admin/products"
-            element={
-              <RequireAuth>
-                <AdminProducts />
-              </RequireAuth>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-        <Route element={<CheckoutLayout />}>
-          <Route
-            path="checkout"
-            element={
-              <RequireAuth>
-                <Checkout />
-              </RequireAuth>
-            }
-          />
-        </Route>
-      </Routes>
+          <Route element={<CheckoutLayout />}>
+            <Route
+              path="checkout"
+              element={
+                <RequireAuth>
+                  <Checkout />
+                </RequireAuth>
+              }
+            />
+          </Route>
+        </Routes>
+      </ProductProvider>
     </AuthProvider>
   );
 }
